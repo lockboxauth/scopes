@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"impractical.co/pqarrays"
+	yall "yall.in"
 )
 
 const (
@@ -113,4 +114,40 @@ func ByID(scopes []Scope) {
 	sort.Slice(scopes, func(i, j int) bool {
 		return scopes[i].ID < scopes[j].ID
 	})
+}
+
+func FilterByClientID(ctx context.Context, scopes []Scope, clientID string) []Scope {
+	var results []Scope
+	for _, scope := range scopes {
+		if ClientCanUseScope(ctx, scope, client) {
+			results = append(results, scope)
+		}
+	}
+	return results
+}
+
+func ClientCanUseScope(ctx context.Context, scope Scope, client string) bool {
+	switch scope.ClientPolicy {
+	case PolicyDenyAll:
+		return false
+	case PolicyAllowAll:
+		return true
+	case PolicyDefaultDeny:
+		for _, id := range scope.ClientExceptions {
+			if id == client {
+				return true
+			}
+		}
+		return false
+	case PolicyDefaultAllow:
+		for _, id := range scope.ClientExceptions {
+			if id == client {
+				return false
+			}
+		}
+		return true
+	default:
+		yall.FromContext(ctx).WithField("scope", scope.ID).WithField("client", client).Warn("unknown scope presented, ignoring it")
+		return false
+	}
 }
