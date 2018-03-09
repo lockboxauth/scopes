@@ -119,7 +119,7 @@ func ByID(scopes []Scope) {
 func FilterByClientID(ctx context.Context, scopes []Scope, clientID string) []Scope {
 	var results []Scope
 	for _, scope := range scopes {
-		if ClientCanUseScope(ctx, scope, client) {
+		if ClientCanUseScope(ctx, scope, clientID) {
 			results = append(results, scope)
 		}
 	}
