@@ -1,0 +1,5 @@
+-- +migrate Up
+ALTER TABLE scopes ALTER COLUMN id TYPE VARCHAR;
+
+-- +migrate Down
+ALTER TABLE scopes ALTER COLUMN id TYPE VARCHAR(36);

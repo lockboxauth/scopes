@@ -7,7 +7,6 @@ import (
 	"errors"
 	"sort"
 
-	"impractical.co/pqarrays"
 	yall "yall.in"
 )
 
@@ -29,17 +28,12 @@ var (
 
 // Scope defines a scope of access to user data that users can grant.
 type Scope struct {
-	ID               string               `sql_column:"id"`
-	UserPolicy       string               `sql_column:"user_policy"`
-	UserExceptions   pqarrays.StringArray `sql_column:"user_exceptions"`
-	ClientPolicy     string               `sql_column:"client_policy"`
-	ClientExceptions pqarrays.StringArray `sql_column:"client_exceptions"`
-	IsDefault        bool                 `sql_column:"is_default"`
-}
-
-// GetSQLTableName returns the table name to store data in when using SQL.
-func (s Scope) GetSQLTableName() string {
-	return "scopes"
+	ID               string
+	UserPolicy       string
+	UserExceptions   []string
+	ClientPolicy     string
+	ClientExceptions []string
+	IsDefault        bool
 }
 
 // IsValidPolicy returns whether a string is a valid policy or not.
