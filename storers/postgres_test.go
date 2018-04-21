@@ -51,12 +51,12 @@ func (p *PostgresFactory) NewStorer(ctx context.Context) (scopes.Storer, error) 
 		return nil, errors.New("PG_TEST_DB must begin with postgres://")
 	}
 
-	table_suffix, err := uuid.GenerateRandomBytes(6)
+	tableSuffix, err := uuid.GenerateRandomBytes(6)
 	if err != nil {
 		log.Printf("Error generating table suffix: %+v\n", err)
 		return nil, err
 	}
-	table := "accounts_test_" + hex.EncodeToString(table_suffix)
+	table := "accounts_test_" + hex.EncodeToString(tableSuffix)
 
 	_, err = p.db.Exec("CREATE DATABASE " + table + ";")
 	if err != nil {

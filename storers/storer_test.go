@@ -18,7 +18,9 @@ import (
 
 const (
 	changeUserPolicy = 1 << iota
+	changeUserExceptions
 	changeClientPolicy
+	changeClientExceptions
 	changeIsDefault
 	changeVariations
 )
@@ -412,9 +414,17 @@ func TestUpdateOneOfMany(t *testing.T) {
 					userPolicy := scopes.PolicyAllowAll
 					change.UserPolicy = &userPolicy
 				}
+				if i&changeUserExceptions != 0 {
+					userExceptions := []string{"user1", "user2"}
+					change.UserExceptions = &userExceptions
+				}
 				if i&changeClientPolicy != 0 {
 					clientPolicy := scopes.PolicyDenyAll
 					change.ClientPolicy = &clientPolicy
+				}
+				if i&changeClientExceptions != 0 {
+					clientExceptions := []string{"client1", "client2", "client3"}
+					change.ClientExceptions = &clientExceptions
 				}
 				if i&changeIsDefault != 0 {
 					isDefault := false

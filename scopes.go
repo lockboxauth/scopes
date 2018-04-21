@@ -49,10 +49,11 @@ func IsValidPolicy(p string) bool {
 
 // Change represents a change to a Scope.
 type Change struct {
-	UserPolicy   *string
-	ClientPolicy *string
-	// TODO(paddy): need to be able to manage exceptions
-	IsDefault *bool
+	UserPolicy       *string
+	UserExceptions   *[]string
+	ClientPolicy     *string
+	ClientExceptions *[]string
+	IsDefault        *bool
 }
 
 // IsEmpty returns true if the Change should be considered empty.
@@ -64,6 +65,12 @@ func (c Change) IsEmpty() bool {
 		return false
 	}
 	if c.IsDefault != nil {
+		return false
+	}
+	if c.UserExceptions != nil {
+		return false
+	}
+	if c.ClientExceptions != nil {
 		return false
 	}
 	return true
@@ -78,8 +85,14 @@ func Apply(change Change, scope Scope) Scope {
 	if change.UserPolicy != nil {
 		res.UserPolicy = *change.UserPolicy
 	}
+	if change.UserExceptions != nil {
+		res.UserExceptions = append([]string{}, *change.UserExceptions...)
+	}
 	if change.ClientPolicy != nil {
 		res.ClientPolicy = *change.ClientPolicy
+	}
+	if change.ClientExceptions != nil {
+		res.ClientExceptions = append([]string{}, *change.ClientExceptions...)
 	}
 	if change.IsDefault != nil {
 		res.IsDefault = *change.IsDefault
@@ -110,6 +123,8 @@ func ByID(scopes []Scope) {
 	})
 }
 
+// FilterByClientID returns which of the Scopes of `scopes` the client specified
+// by `clientID` can use.
 func FilterByClientID(ctx context.Context, scopes []Scope, clientID string) []Scope {
 	var results []Scope
 	for _, scope := range scopes {
@@ -120,6 +135,7 @@ func FilterByClientID(ctx context.Context, scopes []Scope, clientID string) []Sc
 	return results
 }
 
+// ClientCanUseScope returns true if the client specified by `client` can use `scope`.
 func ClientCanUseScope(ctx context.Context, scope Scope, client string) bool {
 	switch scope.ClientPolicy {
 	case PolicyDenyAll:

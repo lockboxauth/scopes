@@ -9,18 +9,19 @@ import (
 	"github.com/pkg/errors"
 
 	"impractical.co/auth/scopes"
+	"impractical.co/pqarrays"
 )
 
-// postgres is an implementation of the Storer interface
+// Postgres is an implementation of the Storer interface
 // that stores data in a PostgreSQL database.
-type postgres struct {
+type Postgres struct {
 	db *sql.DB
 }
 
 // NewPostgres returns a Postgres instance that is backed by the specified
 // *sql.DB. The returned Postgres instance is ready to be used as a Storer.
-func NewPostgres(ctx context.Context, conn *sql.DB) *postgres {
-	return &postgres{db: conn}
+func NewPostgres(ctx context.Context, conn *sql.DB) *Postgres {
+	return &Postgres{db: conn}
 }
 
 func createSQL(ctx context.Context, scope postgresScope) *pan.Query {
@@ -30,7 +31,7 @@ func createSQL(ctx context.Context, scope postgresScope) *pan.Query {
 // Create inserts the passed Scope into the database,
 // returning an ErrScopeAlreadyExists error if a Scope
 // with the same ID already exists in the database.
-func (p *postgres) Create(ctx context.Context, scope scopes.Scope) error {
+func (p *Postgres) Create(ctx context.Context, scope scopes.Scope) error {
 	query := createSQL(ctx, toPostgres(scope))
 	queryStr, err := query.PostgreSQLString()
 	if err != nil {
@@ -64,7 +65,7 @@ func getMultiSQL(ctx context.Context, ids []string) *pan.Query {
 // from the database, returning an empty map if no matching
 // Scopes are found. If a Scope is not found, no error will
 // be returned, it will just be omitted from the map.
-func (p *postgres) GetMulti(ctx context.Context, ids []string) (map[string]scopes.Scope, error) {
+func (p *Postgres) GetMulti(ctx context.Context, ids []string) (map[string]scopes.Scope, error) {
 	query := getMultiSQL(ctx, ids)
 	queryStr, err := query.PostgreSQLString()
 	if err != nil {
@@ -95,8 +96,14 @@ func updateSQL(ctx context.Context, id string, change scopes.Change) *pan.Query 
 	if change.UserPolicy != nil {
 		q.Comparison(scope, "UserPolicy", "=", *change.UserPolicy)
 	}
+	if change.UserExceptions != nil {
+		q.Comparison(scope, "UserExceptions", "=", pqarrays.StringArray(*change.UserExceptions))
+	}
 	if change.ClientPolicy != nil {
 		q.Comparison(scope, "ClientPolicy", "=", *change.ClientPolicy)
+	}
+	if change.ClientExceptions != nil {
+		q.Comparison(scope, "ClientExceptions", "=", pqarrays.StringArray(*change.ClientExceptions))
 	}
 	if change.IsDefault != nil {
 		q.Comparison(scope, "IsDefault", "=", *change.IsDefault)
@@ -110,7 +117,7 @@ func updateSQL(ctx context.Context, id string, change scopes.Change) *pan.Query 
 // Update applies the passed Change to the Scope that matches
 // the specified ID in the Memstore, if any Scope matches the
 // specified ID in the Memstore.
-func (p *postgres) Update(ctx context.Context, id string, change scopes.Change) error {
+func (p *Postgres) Update(ctx context.Context, id string, change scopes.Change) error {
 	if change.IsEmpty() {
 		return nil
 	}
@@ -137,7 +144,7 @@ func deleteSQL(ctx context.Context, id string) *pan.Query {
 // Delete removes the Scope that matches the specified ID from
 // the Memstore, if any Scope matches the specified ID in the
 // Memstore.
-func (p *postgres) Delete(ctx context.Context, id string) error {
+func (p *Postgres) Delete(ctx context.Context, id string) error {
 	query := deleteSQL(ctx, id)
 	queryStr, err := query.PostgreSQLString()
 	if err != nil {
@@ -161,7 +168,7 @@ func listDefaultSQL(ctx context.Context) *pan.Query {
 
 // ListDefault returns all the Scopes with IsDefault set to true.
 // sorted lexicographically by their ID.
-func (p *postgres) ListDefault(ctx context.Context) ([]scopes.Scope, error) {
+func (p *Postgres) ListDefault(ctx context.Context) ([]scopes.Scope, error) {
 	query := listDefaultSQL(ctx)
 	queryStr, err := query.PostgreSQLString()
 	if err != nil {
