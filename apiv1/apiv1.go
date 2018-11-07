@@ -21,7 +21,17 @@ type APIv1 struct {
 	PublicKey rsa.PublicKey
 }
 
+// VerifyRequest parses the verification header (for methods with
+// no body) or the body itself using the PublicKey associated with
+// `a`, returning the parsed and verified contents or a Response
+// indicating the error in the request. If Response is not nil, it
+// is meant to be returned, short-circuiting the request. If Response
+// is nil, the returned string can safely be assumed to be an authenticated
+// request body.
 func (a APIv1) VerifyRequest(r *http.Request) (string, *Response) {
+	// TODO: this is currently vulnerable to replay attacks.
+	// We need to include some sort of unique/private info
+	// to include with the header/body to guard against them.
 	var payload string
 	if r.Method == "GET" || r.Method == "DELETE" {
 		payload = r.Header.Get("verification")
