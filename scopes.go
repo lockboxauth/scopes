@@ -1,5 +1,7 @@
 package scopes
 
+// TODO: refactor storers to match pattern
+
 //go:generate go-bindata -pkg migrations -o migrations/generated.go sql/
 
 import (
