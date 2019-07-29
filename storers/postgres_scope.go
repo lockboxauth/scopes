@@ -1,8 +1,9 @@
 package storers
 
 import (
-	"impractical.co/auth/scopes"
 	"impractical.co/pqarrays"
+
+	"lockbox.dev/scopes"
 )
 
 type postgresScope struct {

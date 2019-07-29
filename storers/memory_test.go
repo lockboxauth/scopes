@@ -3,7 +3,7 @@ package storers
 import (
 	"context"
 
-	"impractical.co/auth/scopes"
+	"lockbox.dev/scopes"
 )
 
 func init() {

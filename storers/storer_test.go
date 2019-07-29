@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/go-uuid"
-
-	"impractical.co/auth/scopes"
+	uuid "github.com/hashicorp/go-uuid"
 	"impractical.co/pqarrays"
+
+	"lockbox.dev/scopes"
 )
 
 const (

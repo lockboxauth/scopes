@@ -1,7 +1,7 @@
 package apiv1
 
 import (
-	"impractical.co/auth/scopes"
+	"lockbox.dev/scopes"
 )
 
 // Scope is the API representation of an Scope.

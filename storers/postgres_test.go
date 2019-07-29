@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/go-uuid"
 	migrate "github.com/rubenv/sql-migrate"
 
-	"impractical.co/auth/scopes"
-	"impractical.co/auth/scopes/migrations"
+	"lockbox.dev/scopes"
+	"lockbox.dev/scopes/migrations"
 )
 
 func init() {

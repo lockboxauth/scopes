@@ -7,9 +7,9 @@ import (
 	"darlinggo.co/pan"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
-
-	"impractical.co/auth/scopes"
 	"impractical.co/pqarrays"
+
+	"lockbox.dev/scopes"
 )
 
 // Postgres is an implementation of the Storer interface

@@ -6,7 +6,7 @@ import (
 	memdb "github.com/hashicorp/go-memdb"
 	"github.com/pkg/errors"
 
-	"impractical.co/auth/scopes"
+	"lockbox.dev/scopes"
 )
 
 var (

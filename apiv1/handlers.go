@@ -6,8 +6,9 @@ import (
 
 	"darlinggo.co/api"
 	"darlinggo.co/trout"
-	"impractical.co/auth/scopes"
 	yall "yall.in"
+
+	"lockbox.dev/scopes"
 )
 
 func (a APIv1) handleCreateScope(w http.ResponseWriter, r *http.Request) {
