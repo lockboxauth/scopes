@@ -1,4 +1,4 @@
-package storers
+package postgres
 
 import (
 	"impractical.co/pqarrays"
@@ -6,7 +6,7 @@ import (
 	"lockbox.dev/scopes"
 )
 
-type postgresScope struct {
+type Scope struct {
 	ID               string               `sql_column:"id"`
 	UserPolicy       string               `sql_column:"user_policy"`
 	UserExceptions   pqarrays.StringArray `sql_column:"user_exceptions"`
@@ -15,11 +15,11 @@ type postgresScope struct {
 	IsDefault        bool                 `sql_column:"is_default"`
 }
 
-func (p postgresScope) GetSQLTableName() string {
+func (s Scope) GetSQLTableName() string {
 	return "scopes"
 }
 
-func fromPostgres(s postgresScope) scopes.Scope {
+func fromPostgres(s Scope) scopes.Scope {
 	return scopes.Scope{
 		ID:               s.ID,
 		UserPolicy:       s.UserPolicy,
@@ -30,8 +30,8 @@ func fromPostgres(s postgresScope) scopes.Scope {
 	}
 }
 
-func toPostgres(s scopes.Scope) postgresScope {
-	return postgresScope{
+func toPostgres(s scopes.Scope) Scope {
+	return Scope{
 		ID:               s.ID,
 		UserPolicy:       s.UserPolicy,
 		UserExceptions:   pqarrays.StringArray(s.UserExceptions),

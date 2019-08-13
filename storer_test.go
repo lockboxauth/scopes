@@ -1,7 +1,8 @@
-package storers
+package scopes_test
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -14,6 +15,8 @@ import (
 	"impractical.co/pqarrays"
 
 	"lockbox.dev/scopes"
+	"lockbox.dev/scopes/storers/memory"
+	"lockbox.dev/scopes/storers/postgres"
 )
 
 const (
@@ -25,12 +28,12 @@ const (
 	changeVariations
 )
 
-type StorerFactory interface {
+type Factory interface {
 	NewStorer(ctx context.Context) (scopes.Storer, error)
 	TeardownStorers() error
 }
 
-var storerFactories []StorerFactory
+var factories []Factory
 
 func uuidOrFail(t *testing.T) string {
 	t.Helper()
@@ -43,19 +46,35 @@ func uuidOrFail(t *testing.T) string {
 
 func TestMain(m *testing.M) {
 	flag.Parse()
+
+	// set up our test storers
+	factories = append(factories, memory.Factory{})
+	if os.Getenv(postgres.TestConnStringEnvVar) != "" {
+		storerConn, err := sql.Open("postgres", os.Getenv(postgres.TestConnStringEnvVar))
+		if err != nil {
+			panic(err)
+		}
+		factories = append(factories, postgres.NewFactory(storerConn))
+	}
+
+	// run the tests
 	result := m.Run()
-	for _, factory := range storerFactories {
+
+	// tear down all the storers we created
+	for _, factory := range factories {
 		err := factory.TeardownStorers()
 		if err != nil {
 			log.Printf("Error cleaning up after %T: %s", factory, err.Error())
 		}
 	}
+
+	// return the test result
 	os.Exit(result)
 }
 
 func runTest(t *testing.T, f func(*testing.T, scopes.Storer, context.Context)) {
 	t.Parallel()
-	for _, factory := range storerFactories {
+	for _, factory := range factories {
 		ctx := context.Background()
 		storer, err := factory.NewStorer(ctx)
 		if err != nil {

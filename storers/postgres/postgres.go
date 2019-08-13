@@ -1,4 +1,4 @@
-package storers
+package postgres
 
 import (
 	"context"
@@ -12,32 +12,38 @@ import (
 	"lockbox.dev/scopes"
 )
 
-// Postgres is an implementation of the Storer interface
+//go:generate go-bindata -pkg migrations -o migrations/generated.go sql/
+
+const (
+	TestConnStringEnvVar = "PG_TEST_DB"
+)
+
+// Storer is an implementation of the Storer interface
 // that stores data in a PostgreSQL database.
-type Postgres struct {
+type Storer struct {
 	db *sql.DB
 }
 
-// NewPostgres returns a Postgres instance that is backed by the specified
-// *sql.DB. The returned Postgres instance is ready to be used as a Storer.
-func NewPostgres(ctx context.Context, conn *sql.DB) *Postgres {
-	return &Postgres{db: conn}
+// NewStorer returns a Storer instance that is backed by the specified
+// *sql.DB. The returned Storer instance is ready to be used as a Storer.
+func NewStorer(ctx context.Context, conn *sql.DB) *Storer {
+	return &Storer{db: conn}
 }
 
-func createSQL(ctx context.Context, scope postgresScope) *pan.Query {
+func createSQL(ctx context.Context, scope Scope) *pan.Query {
 	return pan.Insert(scope)
 }
 
 // Create inserts the passed Scope into the database,
 // returning an ErrScopeAlreadyExists error if a Scope
 // with the same ID already exists in the database.
-func (p *Postgres) Create(ctx context.Context, scope scopes.Scope) error {
+func (s *Storer) Create(ctx context.Context, scope scopes.Scope) error {
 	query := createSQL(ctx, toPostgres(scope))
 	queryStr, err := query.PostgreSQLString()
 	if err != nil {
 		return errors.Wrap(err, "error generating insert SQL")
 	}
-	_, err = p.db.Exec(queryStr, query.Args()...)
+	_, err = s.db.Exec(queryStr, query.Args()...)
 	if e, ok := err.(*pq.Error); ok {
 		if e.Constraint == "scopes_pkey" {
 			return scopes.ErrScopeAlreadyExists
@@ -50,7 +56,7 @@ func (p *Postgres) Create(ctx context.Context, scope scopes.Scope) error {
 }
 
 func getMultiSQL(ctx context.Context, ids []string) *pan.Query {
-	var scope postgresScope
+	var scope Scope
 	q := pan.New("SELECT " + pan.Columns(scope).String() + " FROM " + pan.Table(scope))
 	q.Where()
 	intIDs := make([]interface{}, 0, len(ids))
@@ -65,19 +71,19 @@ func getMultiSQL(ctx context.Context, ids []string) *pan.Query {
 // from the database, returning an empty map if no matching
 // Scopes are found. If a Scope is not found, no error will
 // be returned, it will just be omitted from the map.
-func (p *Postgres) GetMulti(ctx context.Context, ids []string) (map[string]scopes.Scope, error) {
+func (s *Storer) GetMulti(ctx context.Context, ids []string) (map[string]scopes.Scope, error) {
 	query := getMultiSQL(ctx, ids)
 	queryStr, err := query.PostgreSQLString()
 	if err != nil {
 		return nil, errors.Wrap(err, "error generating SQL")
 	}
-	rows, err := p.db.Query(queryStr, query.Args()...)
+	rows, err := s.db.Query(queryStr, query.Args()...)
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying scopes")
 	}
 	results := map[string]scopes.Scope{}
 	for rows.Next() {
-		var scope postgresScope
+		var scope Scope
 		err = pan.Unmarshal(rows, &scope)
 		if err != nil {
 			return nil, errors.Wrap(err, "error unmarshaling scope")
@@ -91,7 +97,7 @@ func (p *Postgres) GetMulti(ctx context.Context, ids []string) (map[string]scope
 }
 
 func updateSQL(ctx context.Context, id string, change scopes.Change) *pan.Query {
-	var scope postgresScope
+	var scope Scope
 	q := pan.New("UPDATE " + pan.Table(scope) + " SET ")
 	if change.UserPolicy != nil {
 		q.Comparison(scope, "UserPolicy", "=", *change.UserPolicy)
@@ -117,7 +123,7 @@ func updateSQL(ctx context.Context, id string, change scopes.Change) *pan.Query 
 // Update applies the passed Change to the Scope that matches
 // the specified ID in the Memstore, if any Scope matches the
 // specified ID in the Memstore.
-func (p *Postgres) Update(ctx context.Context, id string, change scopes.Change) error {
+func (s *Storer) Update(ctx context.Context, id string, change scopes.Change) error {
 	if change.IsEmpty() {
 		return nil
 	}
@@ -126,7 +132,7 @@ func (p *Postgres) Update(ctx context.Context, id string, change scopes.Change) 
 	if err != nil {
 		return errors.Wrap(err, "error generating update SQL")
 	}
-	_, err = p.db.Exec(queryStr, query.Args()...)
+	_, err = s.db.Exec(queryStr, query.Args()...)
 	if err != nil {
 		return errors.Wrap(err, "error updating scope")
 	}
@@ -134,7 +140,7 @@ func (p *Postgres) Update(ctx context.Context, id string, change scopes.Change) 
 }
 
 func deleteSQL(ctx context.Context, id string) *pan.Query {
-	var scope postgresScope
+	var scope Scope
 	q := pan.New("DELETE FROM " + pan.Table(scope))
 	q.Where()
 	q.Comparison(scope, "ID", "=", id)
@@ -144,13 +150,13 @@ func deleteSQL(ctx context.Context, id string) *pan.Query {
 // Delete removes the Scope that matches the specified ID from
 // the Memstore, if any Scope matches the specified ID in the
 // Memstore.
-func (p *Postgres) Delete(ctx context.Context, id string) error {
+func (s *Storer) Delete(ctx context.Context, id string) error {
 	query := deleteSQL(ctx, id)
 	queryStr, err := query.PostgreSQLString()
 	if err != nil {
 		return errors.Wrap(err, "error generating delete SQL")
 	}
-	_, err = p.db.Exec(queryStr, query.Args()...)
+	_, err = s.db.Exec(queryStr, query.Args()...)
 	if err != nil {
 		return errors.Wrap(err, "error deleting scope")
 	}
@@ -158,7 +164,7 @@ func (p *Postgres) Delete(ctx context.Context, id string) error {
 }
 
 func listDefaultSQL(ctx context.Context) *pan.Query {
-	var scope postgresScope
+	var scope Scope
 	q := pan.New("SELECT " + pan.Columns(scope).String() + " FROM " + pan.Table(scope))
 	q.Where()
 	q.Comparison(scope, "IsDefault", "=", true)
@@ -168,19 +174,19 @@ func listDefaultSQL(ctx context.Context) *pan.Query {
 
 // ListDefault returns all the Scopes with IsDefault set to true.
 // sorted lexicographically by their ID.
-func (p *Postgres) ListDefault(ctx context.Context) ([]scopes.Scope, error) {
+func (s *Storer) ListDefault(ctx context.Context) ([]scopes.Scope, error) {
 	query := listDefaultSQL(ctx)
 	queryStr, err := query.PostgreSQLString()
 	if err != nil {
 		return nil, errors.Wrap(err, "error generating SQL")
 	}
-	rows, err := p.db.Query(queryStr, query.Args()...)
+	rows, err := s.db.Query(queryStr, query.Args()...)
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying scopes")
 	}
 	var results []scopes.Scope
 	for rows.Next() {
-		var scope postgresScope
+		var scope Scope
 		err = pan.Unmarshal(rows, &scope)
 		if err != nil {
 			return nil, errors.Wrap(err, "error unmarshaling scope")

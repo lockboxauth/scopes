@@ -1,9 +1,5 @@
 package scopes
 
-// TODO: refactor storers to match pattern
-
-//go:generate go-bindata -pkg migrations -o migrations/generated.go sql/
-
 import (
 	"context"
 	"errors"
@@ -100,16 +96,6 @@ func Apply(change Change, scope Scope) Scope {
 		res.IsDefault = *change.IsDefault
 	}
 	return res
-}
-
-// Storer is an interface for storing and retrieving Scopes and the metadata
-// surrounding them.
-type Storer interface {
-	Create(ctx context.Context, scope Scope) error
-	GetMulti(ctx context.Context, ids []string) (map[string]Scope, error)
-	ListDefault(ctx context.Context) ([]Scope, error)
-	Update(ctx context.Context, id string, change Change) error
-	Delete(ctx context.Context, id string) error
 }
 
 // Dependencies holds the common dependencies that will be used throughout the
