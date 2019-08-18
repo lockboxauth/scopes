@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"darlinggo.co/api"
-	"darlinggo.co/trout"
+	"darlinggo.co/trout/v2"
 	yall "yall.in"
 
 	"lockbox.dev/scopes"

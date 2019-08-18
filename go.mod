@@ -7,7 +7,7 @@ require (
 	bitbucket.org/ww/goautoneg v0.0.0-20120707110453-75cd24fc2f2c // indirect
 	darlinggo.co/api v0.0.0-20160924005218-06eb95038fc2
 	darlinggo.co/pan v0.1.0
-	darlinggo.co/trout v1.0.1
+	darlinggo.co/trout/v2 v2.0.1
 	github.com/go-sql-driver/mysql v1.4.0 // indirect
 	github.com/gobuffalo/packr v1.13.5 // indirect
 	github.com/google/go-cmp v0.2.0

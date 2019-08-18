@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"darlinggo.co/api"
-	"darlinggo.co/trout"
+	"darlinggo.co/trout/v2"
 	yall "yall.in"
 )
 

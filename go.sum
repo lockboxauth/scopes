@@ -4,8 +4,8 @@ darlinggo.co/api v0.0.0-20160924005218-06eb95038fc2 h1:oa8zQRH4gBQ1pyiFuEB/hXWdO
 darlinggo.co/api v0.0.0-20160924005218-06eb95038fc2/go.mod h1:jdJuzT26vs0w+//pW4dw6uklR6p8HOrpqy0v64wii3o=
 darlinggo.co/pan v0.1.0 h1:zBNb4GdgKzR1arYxGEDHhN6GwiGoo1RqJ4NwQRsn0wM=
 darlinggo.co/pan v0.1.0/go.mod h1:xbu2qSVpLk3ikvhCAaFtWQxSSBQtgqzdYNp6y6aZloc=
-darlinggo.co/trout v1.0.1 h1:tFWbzKwBrD+38p2OlhBpqBPtB6KIRlh8ddXk5u3vyRw=
-darlinggo.co/trout v1.0.1/go.mod h1:4yu6HnuPMhLOBMdf5NrKz9IQ1npg335LHG0+bmNRNQk=
+darlinggo.co/trout/v2 v2.0.1 h1:cMz/eXvf7n1kgDKBkCxoWMokfYLZtahTYAfQsOle1gE=
+darlinggo.co/trout/v2 v2.0.1/go.mod h1:+qZ3FE0kpSBYFF8qQV8yGQ8SN600xQYpo37TrUZkWwo=
 github.com/Masterminds/semver v1.4.2/go.mod h1:MB6lktGJrhw8PrUyiEoblNEGEQ+RzHPF078ddwwvV3Y=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
