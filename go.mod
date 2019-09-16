@@ -1,8 +1,5 @@
 module lockbox.dev/scopes
 
-// TODO: use a real version of this
-replace lockbox.dev/hmac v0.0.0 => ../hmac
-
 require (
 	bitbucket.org/ww/goautoneg v0.0.0-20120707110453-75cd24fc2f2c // indirect
 	darlinggo.co/api v0.0.0-20160924005218-06eb95038fc2
@@ -24,6 +21,6 @@ require (
 	google.golang.org/appengine v1.1.0 // indirect
 	gopkg.in/gorp.v1 v1.7.1 // indirect
 	impractical.co/pqarrays v0.0.0-20170820231347-970404683d98
-	lockbox.dev/hmac v0.0.0
+	lockbox.dev/hmac v0.1.0
 	yall.in v0.0.1
 )
