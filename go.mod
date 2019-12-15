@@ -24,3 +24,5 @@ require (
 	lockbox.dev/hmac v0.1.0
 	yall.in v0.0.1
 )
+
+go 1.13
