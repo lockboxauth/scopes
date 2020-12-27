@@ -2,9 +2,9 @@ package memory
 
 import (
 	"context"
+	"fmt"
 
 	memdb "github.com/hashicorp/go-memdb"
-	"github.com/pkg/errors"
 
 	"lockbox.dev/scopes"
 )
@@ -12,10 +12,10 @@ import (
 var (
 	schema = &memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
-			"scope": &memdb.TableSchema{
+			"scope": {
 				Name: "scope",
 				Indexes: map[string]*memdb.IndexSchema{
-					"id": &memdb.IndexSchema{
+					"id": {
 						Name:    "id",
 						Unique:  true,
 						Indexer: &memdb.StringFieldIndex{Field: "ID", Lowercase: true},
@@ -52,14 +52,14 @@ func (s *Storer) Create(ctx context.Context, scope scopes.Scope) error {
 	defer txn.Abort()
 	exists, err := txn.First("scope", "id", scope.ID)
 	if err != nil {
-		return errors.Wrap(err, "error retrieving scope")
+		return fmt.Errorf("error retrieving scope: %w", err)
 	}
 	if exists != nil {
 		return scopes.ErrScopeAlreadyExists
 	}
 	err = txn.Insert("scope", &scope)
 	if err != nil {
-		return errors.Wrap(err, "error inserting scope")
+		return fmt.Errorf("error inserting scope: %w", err)
 	}
 	txn.Commit()
 	return nil
@@ -75,7 +75,7 @@ func (s *Storer) GetMulti(ctx context.Context, ids []string) (map[string]scopes.
 		txn := s.db.Txn(false)
 		s, err := txn.First("scope", "id", id)
 		if err != nil {
-			return results, errors.Wrap(err, "error retrieving scope "+id)
+			return results, fmt.Errorf("error retrieving scope %s: %w", id, err)
 		}
 		if s != nil {
 			results[id] = *s.(*scopes.Scope)
@@ -92,7 +92,7 @@ func (s *Storer) Update(ctx context.Context, id string, change scopes.Change) er
 	defer txn.Abort()
 	scope, err := txn.First("scope", "id", id)
 	if err != nil {
-		return errors.Wrap(err, "error retrieving scope")
+		return fmt.Errorf("error retrieving scope: %w", err)
 	}
 	if scope == nil {
 		return nil
@@ -100,7 +100,7 @@ func (s *Storer) Update(ctx context.Context, id string, change scopes.Change) er
 	updated := scopes.Apply(change, *scope.(*scopes.Scope))
 	err = txn.Insert("scope", &updated)
 	if err != nil {
-		return errors.Wrap(err, "error writing scope")
+		return fmt.Errorf("error writing scope: %w", err)
 	}
 	txn.Commit()
 	return nil
@@ -114,14 +114,14 @@ func (s *Storer) Delete(ctx context.Context, id string) error {
 	defer txn.Abort()
 	exists, err := txn.First("scope", "id", id)
 	if err != nil {
-		return errors.Wrap(err, "error retrieving scope")
+		return fmt.Errorf("error retrieving scope: %w", err)
 	}
 	if exists == nil {
 		return nil
 	}
 	err = txn.Delete("scope", exists)
 	if err != nil {
-		return errors.Wrap(err, "error deleting scope")
+		return fmt.Errorf("error deleting scope: %w", err)
 	}
 	txn.Commit()
 	return nil
@@ -134,7 +134,7 @@ func (s *Storer) ListDefault(ctx context.Context) ([]scopes.Scope, error) {
 	var results []scopes.Scope
 	acctIter, err := txn.Get("scope", "id")
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing scopes")
+		return nil, fmt.Errorf("error listing scopes: %w", err)
 	}
 	for {
 		scope := acctIter.Next()

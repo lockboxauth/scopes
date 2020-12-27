@@ -3,10 +3,10 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"darlinggo.co/pan"
 	"github.com/lib/pq"
-	"github.com/pkg/errors"
 	"impractical.co/pqarrays"
 
 	"lockbox.dev/scopes"
@@ -41,7 +41,7 @@ func (s *Storer) Create(ctx context.Context, scope scopes.Scope) error {
 	query := createSQL(ctx, toPostgres(scope))
 	queryStr, err := query.PostgreSQLString()
 	if err != nil {
-		return errors.Wrap(err, "error generating insert SQL")
+		return fmt.Errorf("error generating insert SQL: %w", err)
 	}
 	_, err = s.db.Exec(queryStr, query.Args()...)
 	if e, ok := err.(*pq.Error); ok {
@@ -50,7 +50,7 @@ func (s *Storer) Create(ctx context.Context, scope scopes.Scope) error {
 		}
 	}
 	if err != nil {
-		return errors.Wrap(err, "error inserting scope")
+		return fmt.Errorf("error inserting scope: %w", err)
 	}
 	return nil
 }
@@ -75,23 +75,23 @@ func (s *Storer) GetMulti(ctx context.Context, ids []string) (map[string]scopes.
 	query := getMultiSQL(ctx, ids)
 	queryStr, err := query.PostgreSQLString()
 	if err != nil {
-		return nil, errors.Wrap(err, "error generating SQL")
+		return nil, fmt.Errorf("error generating SQL: %w", err)
 	}
 	rows, err := s.db.Query(queryStr, query.Args()...)
 	if err != nil {
-		return nil, errors.Wrap(err, "error querying scopes")
+		return nil, fmt.Errorf("error querying scopes: %w", err)
 	}
 	results := map[string]scopes.Scope{}
 	for rows.Next() {
 		var scope Scope
 		err = pan.Unmarshal(rows, &scope)
 		if err != nil {
-			return nil, errors.Wrap(err, "error unmarshaling scope")
+			return nil, fmt.Errorf("error unmarshaling scope: %w", err)
 		}
 		results[scope.ID] = fromPostgres(scope)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, errors.Wrap(err, "error querying scopes")
+		return nil, fmt.Errorf("error querying scopes: %w", err)
 	}
 	return results, nil
 }
@@ -130,11 +130,11 @@ func (s *Storer) Update(ctx context.Context, id string, change scopes.Change) er
 	query := updateSQL(ctx, id, change)
 	queryStr, err := query.PostgreSQLString()
 	if err != nil {
-		return errors.Wrap(err, "error generating update SQL")
+		return fmt.Errorf("error generating update SQL: %w", err)
 	}
 	_, err = s.db.Exec(queryStr, query.Args()...)
 	if err != nil {
-		return errors.Wrap(err, "error updating scope")
+		return fmt.Errorf("error updating scope: %w", err)
 	}
 	return nil
 }
@@ -154,11 +154,11 @@ func (s *Storer) Delete(ctx context.Context, id string) error {
 	query := deleteSQL(ctx, id)
 	queryStr, err := query.PostgreSQLString()
 	if err != nil {
-		return errors.Wrap(err, "error generating delete SQL")
+		return fmt.Errorf("error generating delete SQL: %w", err)
 	}
 	_, err = s.db.Exec(queryStr, query.Args()...)
 	if err != nil {
-		return errors.Wrap(err, "error deleting scope")
+		return fmt.Errorf("error deleting scope: %w", err)
 	}
 	return nil
 }
@@ -178,23 +178,23 @@ func (s *Storer) ListDefault(ctx context.Context) ([]scopes.Scope, error) {
 	query := listDefaultSQL(ctx)
 	queryStr, err := query.PostgreSQLString()
 	if err != nil {
-		return nil, errors.Wrap(err, "error generating SQL")
+		return nil, fmt.Errorf("error generating SQL: %w", err)
 	}
 	rows, err := s.db.Query(queryStr, query.Args()...)
 	if err != nil {
-		return nil, errors.Wrap(err, "error querying scopes")
+		return nil, fmt.Errorf("error querying scopes: %w", err)
 	}
 	var results []scopes.Scope
 	for rows.Next() {
 		var scope Scope
 		err = pan.Unmarshal(rows, &scope)
 		if err != nil {
-			return nil, errors.Wrap(err, "error unmarshaling scope")
+			return nil, fmt.Errorf("error unmarshaling scope: %w", err)
 		}
 		results = append(results, fromPostgres(scope))
 	}
 	if err = rows.Err(); err != nil {
-		return nil, errors.Wrap(err, "error querying scopes")
+		return nil, fmt.Errorf("error querying scopes: %w", err)
 	}
 	return results, nil
 }
