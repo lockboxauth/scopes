@@ -145,7 +145,47 @@ func ClientCanUseScope(ctx context.Context, scope Scope, client string) bool {
 		}
 		return true
 	default:
-		yall.FromContext(ctx).WithField("scope", scope.ID).WithField("client", client).Warn("unknown scope presented, ignoring it")
+		yall.FromContext(ctx).WithField("scope", scope.ID).WithField("client", client).Warn("unknown scope client policy, restricting access")
+		return false
+	}
+}
+
+// FilterByUserID returns which of the Scopes of `scopes` the user specified by
+// `userID` can use.
+func FilterByUserID(ctx context.Context, scopes []Scope, userID string) []Scope {
+	var results []Scope
+	for _, scope := range scopes {
+		if UserCanUseScope(ctx, scope, userID) {
+			results = append(results, scope)
+		}
+	}
+	return results
+}
+
+// UserCanUseScope returns true if the user specified by `userID` can use
+// `scope`.
+func UserCanUseScope(ctx context.Context, scope Scope, userID string) bool {
+	switch scope.UserPolicy {
+	case PolicyDenyAll:
+		return false
+	case PolicyAllowAll:
+		return true
+	case PolicyDefaultDeny:
+		for _, id := range scope.UserExceptions {
+			if id == userID {
+				return true
+			}
+		}
+		return false
+	case PolicyDefaultAllow:
+		for _, id := range scope.UserExceptions {
+			if id == userID {
+				return false
+			}
+		}
+		return true
+	default:
+		yall.FromContext(ctx).WithField("scope", scope.ID).WithField("user", userID).Warn("unknown scope user policy, restricting access")
 		return false
 	}
 }
