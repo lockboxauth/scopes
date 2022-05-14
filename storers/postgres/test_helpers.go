@@ -17,12 +17,18 @@ import (
 	"lockbox.dev/scopes/storers/postgres/migrations"
 )
 
+// Factory is a generator of Storers for testing purposes. It knows how to
+// create, track, and clean up PostgreSQL databases that tests can be run
+// against.
 type Factory struct {
 	db        *sql.DB
 	databases map[string]*sql.DB
 	lock      sync.Mutex
 }
 
+// NewFactory returns a Factory that is ready to be used. The passed sql.DB
+// will be used as a control plane connection, but each test will have its own
+// database created for that test.
 func NewFactory(db *sql.DB) *Factory {
 	return &Factory{
 		db:        db,
@@ -30,17 +36,23 @@ func NewFactory(db *sql.DB) *Factory {
 	}
 }
 
-func (f *Factory) NewStorer(ctx context.Context) (scopes.Storer, error) {
-	u, err := url.Parse(os.Getenv(TestConnStringEnvVar))
+// NewStorer retrieves the connection string from the environment (using
+// TestConnStringEnvVar), parses it, and injects a new database name into it.
+// The new database name is a random name prefixed with scopes_test_, and it
+// will be automatically created in NewStorer. NewStorer also runs migrations,
+// and keeps track of these test databases so they can be deleted automatically
+// later.
+func (f *Factory) NewStorer(ctx context.Context) (scopes.Storer, error) { //nolint:ireturn // the interface we're filling wants an interface returned
+	connString, err := url.Parse(os.Getenv(TestConnStringEnvVar))
 	if err != nil {
 		log.Printf("Error parsing "+TestConnStringEnvVar+" as a URL: %+v\n", err)
 		return nil, err
 	}
-	if u.Scheme != "postgres" {
-		return nil, errors.New(TestConnStringEnvVar + " must begin with postgres://")
+	if connString.Scheme != "postgres" {
+		return nil, errors.New(TestConnStringEnvVar + " must begin with postgres://") //nolint:goerr113 // not going to be handled, for logging purposes only
 	}
 
-	tableSuffix, err := uuid.GenerateRandomBytes(6)
+	tableSuffix, err := uuid.GenerateRandomBytes(6) //nolint:gomnd // not magic, just arbitrary
 	if err != nil {
 		log.Printf("Error generating table suffix: %+v\n", err)
 		return nil, err
@@ -53,8 +65,8 @@ func (f *Factory) NewStorer(ctx context.Context) (scopes.Storer, error) {
 		return nil, err
 	}
 
-	u.Path = "/" + table
-	newConn, err := sql.Open("postgres", u.String())
+	connString.Path = "/" + table
+	newConn, err := sql.Open("postgres", connString.String())
 	if err != nil {
 		log.Println("Accidentally orphaned", table, "it will need to be cleaned up manually")
 		return nil, err
@@ -64,12 +76,12 @@ func (f *Factory) NewStorer(ctx context.Context) (scopes.Storer, error) {
 	f.databases[table] = newConn
 	f.lock.Unlock()
 
-	migrations := &migrate.AssetMigrationSource{
+	migs := &migrate.AssetMigrationSource{
 		Asset:    migrations.Asset,
 		AssetDir: migrations.AssetDir,
 		Dir:      "sql",
 	}
-	_, err = migrate.Exec(newConn, "postgres", migrations, migrate.Up)
+	_, err = migrate.Exec(newConn, "postgres", migs, migrate.Up)
 	if err != nil {
 		return nil, err
 	}
@@ -79,17 +91,20 @@ func (f *Factory) NewStorer(ctx context.Context) (scopes.Storer, error) {
 	return storer, nil
 }
 
+// TeardownStorers automatically deletes all the tracked databases created by
+// NewStorer.
 func (f *Factory) TeardownStorers() error {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 
 	for table, conn := range f.databases {
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			return err
+		}
 		_, err := f.db.Exec("DROP DATABASE " + table + ";")
 		if err != nil {
 			return err
 		}
 	}
-	f.db.Close()
-	return nil
+	return f.db.Close()
 }

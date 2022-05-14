@@ -6,6 +6,8 @@ import (
 	"lockbox.dev/scopes"
 )
 
+// Scope is a representation of the scopes.Scope type that is suitable to be
+// stored in a PostgreSQL database.
 type Scope struct {
 	ID               string               `sql_column:"id"`
 	UserPolicy       string               `sql_column:"user_policy"`
@@ -15,28 +17,30 @@ type Scope struct {
 	IsDefault        bool                 `sql_column:"is_default"`
 }
 
-func (s Scope) GetSQLTableName() string {
+// GetSQLTableName returns the name of the SQL table that the data for this
+// type will be stored in.
+func (Scope) GetSQLTableName() string {
 	return "scopes"
 }
 
-func fromPostgres(s Scope) scopes.Scope {
+func fromPostgres(scope Scope) scopes.Scope {
 	return scopes.Scope{
-		ID:               s.ID,
-		UserPolicy:       s.UserPolicy,
-		UserExceptions:   []string(s.UserExceptions),
-		ClientPolicy:     s.ClientPolicy,
-		ClientExceptions: []string(s.ClientExceptions),
-		IsDefault:        s.IsDefault,
+		ID:               scope.ID,
+		UserPolicy:       scope.UserPolicy,
+		UserExceptions:   []string(scope.UserExceptions),
+		ClientPolicy:     scope.ClientPolicy,
+		ClientExceptions: []string(scope.ClientExceptions),
+		IsDefault:        scope.IsDefault,
 	}
 }
 
-func toPostgres(s scopes.Scope) Scope {
+func toPostgres(scope scopes.Scope) Scope {
 	return Scope{
-		ID:               s.ID,
-		UserPolicy:       s.UserPolicy,
-		UserExceptions:   pqarrays.StringArray(s.UserExceptions),
-		ClientPolicy:     s.ClientPolicy,
-		ClientExceptions: pqarrays.StringArray(s.ClientExceptions),
-		IsDefault:        s.IsDefault,
+		ID:               scope.ID,
+		UserPolicy:       scope.UserPolicy,
+		UserExceptions:   pqarrays.StringArray(scope.UserExceptions),
+		ClientPolicy:     scope.ClientPolicy,
+		ClientExceptions: pqarrays.StringArray(scope.ClientExceptions),
+		IsDefault:        scope.IsDefault,
 	}
 }

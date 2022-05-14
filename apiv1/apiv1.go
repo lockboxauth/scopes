@@ -35,7 +35,11 @@ func (a APIv1) VerifyRequest(r *http.Request) (string, *Response) {
 	// but if deployed over TLS, it shouldn't matter
 	var payload string
 	if r.Method == "POST" || r.Method == "PUT" {
-		defer r.Body.Close()
+		defer func() {
+			if err := r.Body.Close(); err != nil {
+				a.Log.WithError(err).Error("error closing request body")
+			}
+		}()
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			a.Log.WithError(err).Error("error reading request")

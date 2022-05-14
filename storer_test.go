@@ -3,6 +3,7 @@ package scopes_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -72,8 +73,7 @@ func TestMain(m *testing.M) {
 	os.Exit(result)
 }
 
-func runTest(t *testing.T, f func(*testing.T, scopes.Storer, context.Context)) {
-	t.Parallel()
+func runTest(t *testing.T, testFunc func(*testing.T, scopes.Storer, context.Context)) {
 	for _, factory := range factories {
 		ctx := context.Background()
 		storer, err := factory.NewStorer(ctx)
@@ -82,12 +82,14 @@ func runTest(t *testing.T, f func(*testing.T, scopes.Storer, context.Context)) {
 		}
 		t.Run(fmt.Sprintf("Storer=%T", storer), func(t *testing.T) {
 			t.Parallel()
-			f(t, storer, ctx)
+			testFunc(t, storer, ctx)
 		})
 	}
 }
 
 func TestCreateAndGetScope(t *testing.T) {
+	t.Parallel()
+
 	runTest(t, func(t *testing.T, storer scopes.Storer, ctx context.Context) {
 		scope := scopes.Scope{
 			ID:         "https://scopes.impractical.co/test",
@@ -124,6 +126,8 @@ func TestCreateAndGetScope(t *testing.T) {
 }
 
 func TestGetNonexistentScope(t *testing.T) {
+	t.Parallel()
+
 	runTest(t, func(t *testing.T, storer scopes.Storer, ctx context.Context) {
 		res, err := storer.GetMulti(ctx, []string{"nope"})
 		if err != nil {
@@ -136,6 +140,8 @@ func TestGetNonexistentScope(t *testing.T) {
 }
 
 func TestCreateDuplicateID(t *testing.T) {
+	t.Parallel()
+
 	runTest(t, func(t *testing.T, storer scopes.Storer, ctx context.Context) {
 		scope := scopes.Scope{
 			ID:         "https://scopes.impractical.co/test",
@@ -174,7 +180,7 @@ func TestCreateDuplicateID(t *testing.T) {
 		}
 
 		err = storer.Create(ctx, scope2)
-		if err != scopes.ErrScopeAlreadyExists {
+		if !errors.Is(err, scopes.ErrScopeAlreadyExists) {
 			t.Fatalf("Expected ErrScopeAlreadyExists, got %s", err.Error())
 		}
 
@@ -190,11 +196,12 @@ func TestCreateDuplicateID(t *testing.T) {
 		if diff := cmp.Diff(scope, resp); diff != "" {
 			t.Errorf("Retrieved scope doesn't match expectation:\n%s", diff)
 		}
-
 	})
 }
 
 func TestCreateMultipleScopes(t *testing.T) {
+	t.Parallel()
+
 	runTest(t, func(t *testing.T, storer scopes.Storer, ctx context.Context) {
 		scope := scopes.Scope{
 			ID:         "https://scopes.impractical.co/test",
@@ -244,6 +251,8 @@ func TestCreateMultipleScopes(t *testing.T) {
 }
 
 func TestListDefault(t *testing.T) {
+	t.Parallel()
+
 	runTest(t, func(t *testing.T, storer scopes.Storer, ctx context.Context) {
 		testScopes := []scopes.Scope{
 			{
@@ -329,6 +338,8 @@ func TestListDefault(t *testing.T) {
 }
 
 func TestUpdateOneOfMany(t *testing.T) {
+	t.Parallel()
+
 	runTest(t, func(t *testing.T, storer scopes.Storer, ctx context.Context) {
 		throwaways := []scopes.Scope{
 			{
@@ -401,13 +412,13 @@ func TestUpdateOneOfMany(t *testing.T) {
 			ids = append(ids, scope.ID)
 		}
 
-		for i := 1; i < changeVariations; i++ {
-			i := i
-			t.Run(fmt.Sprintf("i=%d", i), func(t *testing.T) {
+		for variation := 1; variation < changeVariations; variation++ {
+			variation := variation
+			t.Run(fmt.Sprintf("variation=%d", variation), func(t *testing.T) {
 				t.Parallel()
 
 				scope := scopes.Scope{
-					ID:         "https://scopes.impractical.co/updated/" + strconv.Itoa(i),
+					ID:         "https://scopes.impractical.co/updated/" + strconv.Itoa(variation),
 					UserPolicy: "DEFAULT_DENY",
 					UserExceptions: pqarrays.StringArray{
 						uuidOrFail(t),
@@ -429,23 +440,23 @@ func TestUpdateOneOfMany(t *testing.T) {
 				scopeIDs = append(scopeIDs, scope.ID)
 
 				var change scopes.Change
-				if i&changeUserPolicy != 0 {
+				if variation&changeUserPolicy != 0 {
 					userPolicy := scopes.PolicyAllowAll
 					change.UserPolicy = &userPolicy
 				}
-				if i&changeUserExceptions != 0 {
+				if variation&changeUserExceptions != 0 {
 					userExceptions := []string{"user1", "user2"}
 					change.UserExceptions = &userExceptions
 				}
-				if i&changeClientPolicy != 0 {
+				if variation&changeClientPolicy != 0 {
 					clientPolicy := scopes.PolicyDenyAll
 					change.ClientPolicy = &clientPolicy
 				}
-				if i&changeClientExceptions != 0 {
+				if variation&changeClientExceptions != 0 {
 					clientExceptions := []string{"client1", "client2", "client3"}
 					change.ClientExceptions = &clientExceptions
 				}
-				if i&changeIsDefault != 0 {
+				if variation&changeIsDefault != 0 {
 					isDefault := false
 					change.IsDefault = &isDefault
 				}
@@ -484,6 +495,8 @@ func TestUpdateOneOfMany(t *testing.T) {
 }
 
 func TestUpdateNonExistent(t *testing.T) {
+	t.Parallel()
+
 	// updating a scope that doesn't exist is not an error
 	runTest(t, func(t *testing.T, storer scopes.Storer, ctx context.Context) {
 		deny := scopes.PolicyDefaultDeny
@@ -498,6 +511,8 @@ func TestUpdateNonExistent(t *testing.T) {
 }
 
 func TestUpdateNoChange(t *testing.T) {
+	t.Parallel()
+
 	// updating a scope with an empty change should not error
 	runTest(t, func(t *testing.T, storer scopes.Storer, ctx context.Context) {
 		var change scopes.Change
@@ -509,6 +524,8 @@ func TestUpdateNoChange(t *testing.T) {
 }
 
 func TestDeleteOneOfMany(t *testing.T) {
+	t.Parallel()
+
 	runTest(t, func(t *testing.T, storer scopes.Storer, ctx context.Context) {
 		throwaways := []scopes.Scope{
 			{
@@ -627,6 +644,8 @@ func TestDeleteOneOfMany(t *testing.T) {
 }
 
 func TestDeleteNonExistent(t *testing.T) {
+	t.Parallel()
+
 	runTest(t, func(t *testing.T, storer scopes.Storer, ctx context.Context) {
 		// we shouldn't get an error deleting a scope that doesn't exist
 		err := storer.Delete(ctx, "https://scopes.impractical.co/404")

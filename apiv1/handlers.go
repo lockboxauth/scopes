@@ -2,6 +2,7 @@ package apiv1
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"darlinggo.co/api"
@@ -50,7 +51,7 @@ func (a APIv1) handleCreateScope(w http.ResponseWriter, r *http.Request) {
 	}
 	err = a.Storer.Create(r.Context(), scope)
 	if err != nil {
-		if err == scopes.ErrScopeAlreadyExists {
+		if errors.Is(err, scopes.ErrScopeAlreadyExists) {
 			api.Encode(w, r, http.StatusBadRequest, Response{Errors: []api.RequestError{{Field: "/id", Slug: api.RequestErrConflict}}})
 			return
 		}

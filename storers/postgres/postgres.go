@@ -3,11 +3,13 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"darlinggo.co/pan"
 	"github.com/lib/pq"
 	"impractical.co/pqarrays"
+	"yall.in"
 
 	"lockbox.dev/scopes"
 )
@@ -15,6 +17,10 @@ import (
 //go:generate go-bindata -pkg migrations -o migrations/generated.go sql/
 
 const (
+	// TestConnStringEnvVar is the environment variable to use when
+	// specifying a connection string for the database to run tests
+	// against. Tests will run in their own isolated databases, not in the
+	// default database the connection string is for.
 	TestConnStringEnvVar = "PG_TEST_DB"
 )
 
@@ -26,11 +32,11 @@ type Storer struct {
 
 // NewStorer returns a Storer instance that is backed by the specified
 // *sql.DB. The returned Storer instance is ready to be used as a Storer.
-func NewStorer(ctx context.Context, conn *sql.DB) *Storer {
+func NewStorer(_ context.Context, conn *sql.DB) *Storer {
 	return &Storer{db: conn}
 }
 
-func createSQL(ctx context.Context, scope Scope) *pan.Query {
+func createSQL(_ context.Context, scope Scope) *pan.Query {
 	return pan.Insert(scope)
 }
 
@@ -44,10 +50,9 @@ func (s *Storer) Create(ctx context.Context, scope scopes.Scope) error {
 		return fmt.Errorf("error generating insert SQL: %w", err)
 	}
 	_, err = s.db.Exec(queryStr, query.Args()...)
-	if e, ok := err.(*pq.Error); ok {
-		if e.Constraint == "scopes_pkey" {
-			return scopes.ErrScopeAlreadyExists
-		}
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) && pqErr.Constraint == "scopes_pkey" {
+		return scopes.ErrScopeAlreadyExists
 	}
 	if err != nil {
 		return fmt.Errorf("error inserting scope: %w", err)
@@ -55,16 +60,16 @@ func (s *Storer) Create(ctx context.Context, scope scopes.Scope) error {
 	return nil
 }
 
-func getMultiSQL(ctx context.Context, ids []string) *pan.Query {
+func getMultiSQL(_ context.Context, ids []string) *pan.Query {
 	var scope Scope
-	q := pan.New("SELECT " + pan.Columns(scope).String() + " FROM " + pan.Table(scope))
-	q.Where()
+	query := pan.New("SELECT " + pan.Columns(scope).String() + " FROM " + pan.Table(scope))
+	query.Where()
 	intIDs := make([]interface{}, 0, len(ids))
 	for _, id := range ids {
 		intIDs = append(intIDs, id)
 	}
-	q.In(scope, "ID", intIDs...)
-	return q.Flush(" ")
+	query.In(scope, "ID", intIDs...)
+	return query.Flush(" ")
 }
 
 // GetMulti retrieves the Scopes specified by the passed IDs
@@ -77,10 +82,11 @@ func (s *Storer) GetMulti(ctx context.Context, ids []string) (map[string]scopes.
 	if err != nil {
 		return nil, fmt.Errorf("error generating SQL: %w", err)
 	}
-	rows, err := s.db.Query(queryStr, query.Args()...)
+	rows, err := s.db.Query(queryStr, query.Args()...) //nolint:sqlclosecheck // the closeRows helper isn't picked up
 	if err != nil {
 		return nil, fmt.Errorf("error querying scopes: %w", err)
 	}
+	defer closeRows(ctx, rows)
 	results := map[string]scopes.Scope{}
 	for rows.Next() {
 		var scope Scope
@@ -96,28 +102,28 @@ func (s *Storer) GetMulti(ctx context.Context, ids []string) (map[string]scopes.
 	return results, nil
 }
 
-func updateSQL(ctx context.Context, id string, change scopes.Change) *pan.Query {
+func updateSQL(_ context.Context, id string, change scopes.Change) *pan.Query {
 	var scope Scope
-	q := pan.New("UPDATE " + pan.Table(scope) + " SET ")
+	query := pan.New("UPDATE " + pan.Table(scope) + " SET ")
 	if change.UserPolicy != nil {
-		q.Comparison(scope, "UserPolicy", "=", *change.UserPolicy)
+		query.Comparison(scope, "UserPolicy", "=", *change.UserPolicy)
 	}
 	if change.UserExceptions != nil {
-		q.Comparison(scope, "UserExceptions", "=", pqarrays.StringArray(*change.UserExceptions))
+		query.Comparison(scope, "UserExceptions", "=", pqarrays.StringArray(*change.UserExceptions))
 	}
 	if change.ClientPolicy != nil {
-		q.Comparison(scope, "ClientPolicy", "=", *change.ClientPolicy)
+		query.Comparison(scope, "ClientPolicy", "=", *change.ClientPolicy)
 	}
 	if change.ClientExceptions != nil {
-		q.Comparison(scope, "ClientExceptions", "=", pqarrays.StringArray(*change.ClientExceptions))
+		query.Comparison(scope, "ClientExceptions", "=", pqarrays.StringArray(*change.ClientExceptions))
 	}
 	if change.IsDefault != nil {
-		q.Comparison(scope, "IsDefault", "=", *change.IsDefault)
+		query.Comparison(scope, "IsDefault", "=", *change.IsDefault)
 	}
-	q.Flush(", ")
-	q.Where()
-	q.Comparison(scope, "ID", "=", id)
-	return q.Flush(" ")
+	query.Flush(", ")
+	query.Where()
+	query.Comparison(scope, "ID", "=", id)
+	return query.Flush(" ")
 }
 
 // Update applies the passed Change to the Scope that matches
@@ -139,7 +145,7 @@ func (s *Storer) Update(ctx context.Context, id string, change scopes.Change) er
 	return nil
 }
 
-func deleteSQL(ctx context.Context, id string) *pan.Query {
+func deleteSQL(_ context.Context, id string) *pan.Query {
 	var scope Scope
 	q := pan.New("DELETE FROM " + pan.Table(scope))
 	q.Where()
@@ -163,7 +169,7 @@ func (s *Storer) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func listDefaultSQL(ctx context.Context) *pan.Query {
+func listDefaultSQL(_ context.Context) *pan.Query {
 	var scope Scope
 	q := pan.New("SELECT " + pan.Columns(scope).String() + " FROM " + pan.Table(scope))
 	q.Where()
@@ -180,10 +186,11 @@ func (s *Storer) ListDefault(ctx context.Context) ([]scopes.Scope, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error generating SQL: %w", err)
 	}
-	rows, err := s.db.Query(queryStr, query.Args()...)
+	rows, err := s.db.Query(queryStr, query.Args()...) //nolint:sqlclosecheck // the closeRows helper isn't picked up
 	if err != nil {
 		return nil, fmt.Errorf("error querying scopes: %w", err)
 	}
+	defer closeRows(ctx, rows)
 	var results []scopes.Scope
 	for rows.Next() {
 		var scope Scope
@@ -197,4 +204,10 @@ func (s *Storer) ListDefault(ctx context.Context) ([]scopes.Scope, error) {
 		return nil, fmt.Errorf("error querying scopes: %w", err)
 	}
 	return results, nil
+}
+
+func closeRows(ctx context.Context, rows *sql.Rows) {
+	if err := rows.Close(); err != nil {
+		yall.FromContext(ctx).WithError(err).Error("failed to close rows")
+	}
 }

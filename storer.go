@@ -1,6 +1,8 @@
 package scopes
 
-import "context"
+import (
+	"context"
+)
 
 // Storer is an interface for storing and retrieving Scopes and the metadata
 // surrounding them.

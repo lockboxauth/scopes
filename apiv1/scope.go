@@ -38,14 +38,6 @@ func coreScope(scope Scope) scopes.Scope {
 	}
 }
 
-func coreScopes(scops []Scope) []scopes.Scope {
-	res := make([]scopes.Scope, 0, len(scops))
-	for _, scop := range scops {
-		res = append(res, coreScope(scop))
-	}
-	return res
-}
-
 func apiScope(scope scopes.Scope) Scope {
 	return Scope{
 		ID:               scope.ID,
@@ -67,16 +59,6 @@ func apiScopes(scops []scopes.Scope) []Scope {
 
 func coreChange(change Change) scopes.Change {
 	return scopes.Change{
-		UserPolicy:       change.UserPolicy,
-		UserExceptions:   change.UserExceptions,
-		ClientPolicy:     change.ClientPolicy,
-		ClientExceptions: change.ClientExceptions,
-		IsDefault:        change.IsDefault,
-	}
-}
-
-func apiChange(change scopes.Change) Change {
-	return Change{
 		UserPolicy:       change.UserPolicy,
 		UserExceptions:   change.UserExceptions,
 		ClientPolicy:     change.ClientPolicy,
